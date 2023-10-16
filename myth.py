@@ -1,57 +1,78 @@
-from flask import Flask, request, jsonify
 import openai
-import logging
-from dalle3 import Dalle
 import os
 import gradio as gr
-import requests
-from PIL import Image
-from io import BytesIO
+import logging
+from dalle3 import Dalle
+from swarms.models import OpenAI  
 
-app = Flask(__name__)
 
-# Initialize DALLE3 API, INPUT YOUR OWN COOKIE
-cookie = "your-_U-cookie-here"
+model = OpenAI(openai_api_key = "your-openai-api-key-here")
+
+response = model("Generate")
+
+# Initialize DALLE3 API
+cookie = "your-bing--cookie-here"
 dalle = Dalle(cookie)
 
-# Initialize OpenAI API, INPUT YOUR OWN OPENAI KEY
-openai.api_key = "your-openai-key-here"
-def interpret_text_with_gpt(text):
-    model_engine = "text-davinci-003"
-    panel_instructions = "Create a comic panel where"
-    refined_prompt = f"{panel_instructions} {text}"
-    
-    response = openai.Completion.create(
-        engine=model_engine,
-        prompt=refined_prompt,
-        max_tokens=100
-    )
-    
-    final_prompt = response.choices[0].text.strip()
-    return final_prompt
 
-def generate_images_with_dalle(refined_prompt):
-    dalle.create(refined_prompt)
+
+
+logging.basicConfig(level=logging.INFO)
+
+accumulated_story = ""
+latest_caption = ""
+standard_suffix = ""
+storyboard = []
+
+def generate_images_with_dalle(caption):
+    dalle.create(caption)
     urls = dalle.get_urls()
     return urls
 
-def gradio_interface(text):
-    refined_prompt = interpret_text_with_gpt(text)
-    comic_panel_urls = generate_images_with_dalle(refined_prompt)
+def generate_single_caption(text):
+    prompt = f"A comic about {text}."
+    response = model(prompt)
+    return response
+
+def interpret_text_with_gpt(text, suffix):
+    return generate_single_caption(f"{text} {suffix}")
+
+def create_standard_suffix(original_prompt):
+    return f"In the style of {original_prompt}"
+
+def gradio_interface(text=None, next_button_clicked=False):
+    global accumulated_story, latest_caption, standard_suffix, storyboard
     
-    output = []
-    for i, url in enumerate(comic_panel_urls):
-        response = requests.get(url)
-        img = Image.open(BytesIO(response.content))
-        caption = f"Caption for panel {i+1}"
-        output.append((img, caption))
+    if not standard_suffix:
+        standard_suffix = create_standard_suffix(text)
+    
+    if next_button_clicked:
+        new_caption = interpret_text_with_gpt(latest_caption, standard_suffix)
+        new_urls = generate_images_with_dalle(new_caption)
+        latest_caption = new_caption
+        storyboard.append((new_urls, new_caption))
         
-    return output
+    elif text:
+        caption = interpret_text_with_gpt(text, standard_suffix)
+        comic_panel_urls = generate_images_with_dalle(caption)
+        latest_caption = caption
+        storyboard.append((comic_panel_urls, caption))
 
-iface = gr.Interface(
-    fn=gradio_interface,
-    inputs=["text"],
-    outputs=[gr.outputs.Image(type="pil", label="Comic Panels"), "text"]
-)
+    storyboard_html = ""
+    for urls, cap in storyboard:
+        for url in urls:
+            storyboard_html += f'<img src="{url}" alt="{cap}" width="300"/><br>{cap}<br>'
 
-iface.launch()
+    return storyboard_html
+
+if __name__ == "__main__":
+    iface = gr.Interface(
+        fn=gradio_interface,
+        inputs=[
+            gr.inputs.Textbox(default="Type your story concept here", optional=True, label="Story Concept"),
+            gr.inputs.Checkbox(label="Generate Next Part")
+        ],
+        outputs=[gr.outputs.HTML()],
+        live=False  # Submit button will appear
+    )
+    iface.launch()
