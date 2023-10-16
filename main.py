@@ -11,7 +11,7 @@ model = OpenAI(openai_api_key = "your-openai-api-key-here")
 response = model("Generate")
 
 # Initialize DALLE3 API
-cookie = "your-bing--cookie-here"
+cookie = "your-bing-cookie-here"
 dalle = Dalle(cookie)
 
 
