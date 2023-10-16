@@ -17,7 +17,7 @@ dalle = Dalle(cookie)
 # Initialize OpenAI API, INPUT YOUR OWN OPENAI KEY
 openai.api_key = "your-openai-key-here"
 def interpret_text_with_gpt(text):
-    model_engine = "text-davinci-002"
+    model_engine = "text-davinci-003"
     panel_instructions = "Create a comic panel where"
     refined_prompt = f"{panel_instructions} {text}"
     
