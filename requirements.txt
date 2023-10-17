@@ -1,0 +1,6 @@
+dalle3==0.0.7
+Flask==2.3.2
+gradio==3.47.1
+openai==0.28.1
+Pillow==10.1.0
+Requests==2.31.0

@@ -6,12 +6,13 @@ from dalle3 import Dalle
 from swarms.models import OpenAI  
 
 
-model = OpenAI(openai_api_key = "your-openai-api-key-here")
+openai_api_key = os.getenv("OPENAI_API_KEY")
+model = OpenAI(openai_api_key = openai_api_key)
 
 response = model("Generate")
 
 # Initialize DALLE3 API
-cookie = "your-bing-cookie-here"
+cookie = os.getenv("DALLE_COOKIE")
 dalle = Dalle(cookie)
 
 
