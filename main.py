@@ -4,7 +4,9 @@ import gradio as gr
 import logging
 from dalle3 import Dalle
 from swarms.models import OpenAI  
+import dotenv
 
+dotenv.load_dotenv(".env")
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
 model = OpenAI(openai_api_key = openai_api_key)
@@ -14,9 +16,6 @@ response = model("Generate")
 # Initialize DALLE3 API
 cookie = os.getenv("DALLE_COOKIE")
 dalle = Dalle(cookie)
-
-
-
 
 logging.basicConfig(level=logging.INFO)
 
