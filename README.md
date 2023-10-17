@@ -3,7 +3,6 @@ Overview
 
 ![panel_2](https://github.com/elder-plinius/MythGen/assets/133052465/86bb5784-845b-4db8-a38f-217169ea5201)
 
-![Uploading Screenshot (104).png…]()
 
 MythGen is an Iterative Multimedia Generator that allows users to create their own comic stories based on textual prompts. The system integrates state-of-the-art language and image models to provide a seamless and creative experience.
 Features
