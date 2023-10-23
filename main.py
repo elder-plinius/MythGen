@@ -3,13 +3,15 @@ import os
 import gradio as gr
 import logging
 from dalle3 import Dalle
-from swarms.models import OpenAI  
+from swarms.models.bingchat import BingChat  
 import dotenv
+
 
 dotenv.load_dotenv(".env")
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
-model = OpenAI(openai_api_key = openai_api_key)
+model = BingChat(cookie_path = "")
+
 
 response = model("Generate")
 
