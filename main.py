@@ -1,5 +1,6 @@
 import os
 import openai
+import dotenv
 import gradio as gr
 import logging
 from dalle3 import Dalle
