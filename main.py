@@ -1,80 +1,96 @@
-import openai
 import os
+import openai
 import gradio as gr
 import logging
 from dalle3 import Dalle
-from swarms.models.bingchat import BingChat  
-import dotenv
+from swarms.models import OpenAI  
 
 
-dotenv.load_dotenv(".env")
-
-openai_api_key = os.getenv("OPENAI_API_KEY")
-model = BingChat(cookie_path = "")
-
-
+model = OpenAI(os.getenv("OPENAI_API_KEY"))
 response = model("Generate")
+cookie = os.getenv("DALLE_COOKIE")
 
 # Initialize DALLE3 API
-cookie = os.getenv("DALLE_COOKIE")
 dalle = Dalle(cookie)
-
 logging.basicConfig(level=logging.INFO)
 
-accumulated_story = ""
-latest_caption = ""
-standard_suffix = ""
-storyboard = []
 
-def generate_images_with_dalle(caption):
-    dalle.create(caption)
+
+accumulated_story = ""
+favorite_panels = []
+
+
+def generate_images_with_dalle(refined_prompt):
+    dalle.create(refined_prompt)
     urls = dalle.get_urls()
     return urls
 
 def generate_single_caption(text):
     prompt = f"A comic about {text}."
+
     response = model(prompt)
+
     return response
-
-def interpret_text_with_gpt(text, suffix):
-    return generate_single_caption(f"{text} {suffix}")
-
-def create_standard_suffix(original_prompt):
-    return f"In the style of {original_prompt}"
-
-def gradio_interface(text=None, next_button_clicked=False):
-    global accumulated_story, latest_caption, standard_suffix, storyboard
     
-    if not standard_suffix:
-        standard_suffix = create_standard_suffix(text)
     
-    if next_button_clicked:
-        new_caption = interpret_text_with_gpt(latest_caption, standard_suffix)
-        new_urls = generate_images_with_dalle(new_caption)
-        latest_caption = new_caption
-        storyboard.append((new_urls, new_caption))
+
+# Function to Interpret Text with GPT-3 (Now Simplified)
+def interpret_text_with_gpt(text):
+    caption = generate_single_caption(text)
+    refined_prompt = f"Entire page of comic panels, using clear embedded text for dialogue if applicable, for: {text}"
+    return refined_prompt, caption
+
+# Gradio Interface Function
+def gradio_interface(state=None, text=None, selected_panel_index=None):
+    global accumulated_story, favorite_panels
+    
+    if state is None:
+        state = {}
         
-    elif text:
-        caption = interpret_text_with_gpt(text, standard_suffix)
+    if "stage" not in state:
+        state["stage"] = 1
+    
+    if state["stage"] == 1:
+        if text is None:
+            return state, "Please enter a story to begin.", accumulated_story, favorite_panels
+        
+        refined_prompt, caption = interpret_text_with_gpt(text)
         comic_panel_urls = generate_images_with_dalle(caption)
-        latest_caption = caption
-        storyboard.append((comic_panel_urls, caption))
+        
+        html_output = ""
+        for url in comic_panel_urls:
+            html_output += f'<img src="{url}" alt="{caption}" width="300"/><br>{caption}<br>'
+        
+        state["stage"] = 2
+        accumulated_story += f"{refined_prompt} "
+        return state, html_output, accumulated_story, favorite_panels
 
-    storyboard_html = ""
-    for urls, cap in storyboard:
-        for url in urls:
-            storyboard_html += f'<img src="{url}" alt="{cap}" width="300"/><br>{cap}<br>'
-
-    return storyboard_html
+    elif state["stage"] == 2:
+        if selected_panel_index is not None and selected_panel_index in ["Panel 1", "Panel 2", "Panel 3", "Panel 4"]:
+            selected_panel_index = ["Panel 1", "Panel 2", "Panel 3", "Panel 4"].index(selected_panel_index)
+            favorite_panels.append(comic_panel_urls[selected_panel_index])
+            state["stage"] = 1
+        return state, "Ready for the next story input. You can now enter a new prompt.", accumulated_story, favorite_panels
 
 if __name__ == "__main__":
     iface = gr.Interface(
         fn=gradio_interface,
         inputs=[
-            gr.inputs.Textbox(default="Type your story concept here", optional=True, label="Story Concept"),
-            gr.inputs.Checkbox(label="Generate Next Part")
+            "state",
+            gr.inputs.Textbox(default="Type your story concept here"),
+            gr.inputs.Radio(
+                choices=["Panel 1", "Panel 2", "Panel 3", "Panel 4"],
+                label="Favorite Panel",
+                type="value",
+                default=None,
+                optional=True
+            )
         ],
-        outputs=[gr.outputs.HTML()],
-        live=False  # Submit button will appear
+        outputs=[
+            "state",
+            gr.outputs.HTML(),
+            "text",
+            gr.outputs.Textbox(label="Favorite Panels")
+        ]
     )
     iface.launch()
